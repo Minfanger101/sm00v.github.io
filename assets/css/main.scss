@@ -1,0 +1,28 @@
+---
+# Only the main Sass file needs front matter (the dashes are enough)
+---
+
+@charset "utf-8";
+
+@import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}"; // skin
+
+/* twilight syntax highlighting */
+$base00: #1d1f21 !important;
+$base01: #282a2e !important;
+$base02: #373b41 !important;
+$base03: #969896 !important;
+$base04: #b4b7b4 !important;
+$base05: #c5c8c6 !important;
+$base06: #e0e0e0 !important;
+$base07: #ffffff !important;
+$base08: #cc6666 !important;
+$base09: #de935f !important;
+$base0A: #f0c674 !important;
+$base0B: #b5bd68 !important;
+$base0C: #8abeb7 !important;
+$base0D: #81a2be !important;
+$base0E: #b294bb !important;
+$base0F: #a3685a !important;
+
+@import "minimal-mistakes"; // main partials
+
