@@ -18,7 +18,7 @@ minimal_mistakes_skin    : "default" # "default", "air", "aqua", "contrast", "da
 locale                   : "en-US"
 title                    : "sm00v.github.io"
 title_separator          : "-"
-subtitle                 : "odds & ends" # site tagline that appears below site title in masthead
+subtitle                 : "state of procrastination" # site tagline that appears below site title in masthead
 name                     : "Vincent Mentz"
 description              : # "Thoughts"
 url                      : "https://sm00v.github.io" # the base hostname & protocol for your site e.g. "https://mmistakes.github.io" baseurl                  : # the subpath of your site, e.g. "/blog"
@@ -108,7 +108,7 @@ analytics:
 author:
   name             : "Vincent Mentz"
   avatar           : "/assets/images/site/bike_profile.jpg"
-  bio              : "*Im in ur computerz.*"
+  bio              : "*Constantly learning and pushing myself to the limit. 0h btw, i'm in ur computerz.*"
   location         : "EIP"
   email            : # "TBD"
   links:
