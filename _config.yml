@@ -16,13 +16,13 @@ minimal_mistakes_skin    : "default" # "default", "air", "aqua", "contrast", "da
 
 # Site Settings
 locale                   : "en-US"
-title                    : "mnorris.io"
+title                    : "sm00v.github.io"
 title_separator          : "-"
 subtitle                 : "odds & ends" # site tagline that appears below site title in masthead
-name                     : "Michael W. Norris"
+name                     : "Vincent Mentz"
 description              : # "Thoughts"
-url                      : "https://mnorris.io" # the base hostname & protocol for your site e.g. "https://mmistakes.github.io" baseurl                  : # the subpath of your site, e.g. "/blog"
-repository               : "norrismw/mnorris.io" # GitHub username/repo-name e.g. "mmistakes/minimal-mistakes"
+url                      : "https://sm00v.github.io" # the base hostname & protocol for your site e.g. "https://mmistakes.github.io" baseurl                  : # the subpath of your site, e.g. "/blog"
+repository               : "sm00v/sm00v.github.io" # GitHub username/repo-name e.g. "mmistakes/minimal-mistakes"
 teaser                   : # path of fallback teaser image, e.g. "/assets/images/500x300.png"
 logo                     : "/assets/images/site/drop.png" # path of logo image to display in the masthead, e.g. "/assets/images/88x88.png"
 masthead_title           : # overrides the website title displayed in the masthead, use " " for no title
@@ -106,43 +106,43 @@ analytics:
 
 # Site Author
 author:
-  name             : "Michael W. Norris"
+  name             : "Vincent Mentz"
   avatar           : "/assets/images/site/bike_profile.jpg"
   bio              : "*An archetypal computer nerd with an added pinch of personality.*"
-  location         : "Boulder, CO"
-  email            : # "info@mnorris.io"
+  location         : "EIP"
+  email            : # "TBD"
   links:
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
-      # url: mailto:info@mnorris.io
+      # url: mailto:info@TBD.io
     - label: "Website"
       icon: "fas fa-fw fa-link"
       # url: "https://your-website.com"
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
-      url: "https://twitter.com/norrismw"
+      url: "https://twitter.com/twitter"
     - label: "Facebook"
       icon: "fab fa-fw fa-facebook-square"
       # url: "https://facebook.com/"
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
-      url: "https://github.com/norrismw"
+      url: "https://github.com/sm00v"
     - label: "Instagram"
       icon: "fab fa-fw fa-instagram"
-      url: "https://instagram.com/norrismw"
+      url: "https://instagram.com/instagram"
 
 # Site Footer
 footer:
   links:
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
-      url: "https://twitter.com/norrismw"
+      url: "https://twitter.com/twitter"
     - label: "Facebook"
       icon: "fab fa-fw fa-facebook-square"
       # url:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
-      url: "https://github.com/norrismw"
+      url: "https://github.com/sm00v"
     - label: "GitLab"
       icon: "fab fa-fw fa-gitlab"
       # url:
@@ -151,7 +151,7 @@ footer:
       # url:
     - label: "Instagram"
       icon: "fab fa-fw fa-instagram"
-      url: "https://instagram.com/norrismw"
+      url: "https://instagram.com/instagram"
 
 
 # Reading Files
