@@ -16,9 +16,21 @@ Create a Shell_Bind_TCP shellcode that;
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, and execve. Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload. 
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, and execve. We can analyze unistd_32.h to grab our syscall identifiers:
+```
+egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 
-```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a payload the size of 78 bytes:
+#define __NR_execve 11
+#define __NR_dup2 63
+#define __NR_socket 359
+#define __NR_bind 361
+#define __NR_listen 363
+#define __NR_accept4 364```
+
+Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload, socket. 
+
+### Referencing MSF Goodies
+```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a bind shell payload the size of 78 bytes:
 
 ```nasm
 xor ebx,ebx  
@@ -71,8 +83,8 @@ Any socket in C would be built upon the skeleton below:
 ```c socket_skeleton = int socket(int domain, int type, int protocol);```
 
 The manpage ip(7) further explains that a TCP socket should be created with these paramaters:
-```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which would be translated to:
-```c tcp_socket = socket()```
+```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which in `pseudocode` would be translated to:
+```c tcp_socket = 0x66(2, 1, 0)```
 
 Further examples of alternate sockets include:
 ```c udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
