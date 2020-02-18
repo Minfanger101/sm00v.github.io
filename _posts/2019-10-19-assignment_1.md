@@ -25,7 +25,8 @@ egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 #define __NR_socket 359
 #define __NR_bind 361
 #define __NR_listen 363
-#define __NR_accept4 364```
+#define __NR_accept4 364
+```
 
 Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload, socket. 
 
