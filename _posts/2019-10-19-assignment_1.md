@@ -111,11 +111,11 @@ _start:
 	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
 	;which can be referenced in /usr/include/linux/net.h.
 	
-	xor ebx, ebx  ; clear ebx
-	push ebx      ; push third arg on stack (protocol)
-	push 0x1      ; push second arg on stack (SOCK_STREAM)
+	push 0x1      ; push third arg on stack (protocol)
+	pop ebx	      ; socketcall needs ebx to be 1. this clears ebx and moves 1 to ebx
+	push ebx      ; push second arg on stack (SOCK_STREAM)
 	push 0x2      ; push first arg on stack (AF_INET)
-	mov ecx, esp  ; move esp pointer to ecx
+	mov ecx, esp  ; move esp pointer to ecx per socketcall requirements [2, 1, 0]
 	int 0x80      ; call interrupt to execute socket syscall
 ```
 
@@ -131,12 +131,24 @@ Now that we have created a socket, it is time to bind to a given port.
 ```
 
 
-### Create a TCP Socket
-`int socket(int domain, int type, int protocol);`
 
-First, a TCP socket is created using the `socket` function. As described in `man 2 socket`, the function creates an endpoint for communication and returns a file descriptor that refers to that endpoint. `socket` expects a domain argument, a type argument, and a protocol argument.
 
-In this case, the domain argument `AF_INET` specifies the IPv4 communication protocol, the type argument `SOCK_STREAM` specifies the connection-based TCP standard for data exchange, and the protocol argument `0` indicates that the system should select the default protocol number based on the previously specified domain and protocol arguments.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Create an IP Socket Address Structure
 Next, the `addr` IP socket address structure is created which is used in the forthcoming `bind` method. As further explained in `man 7 ip`, an IP socket address is defined as a combination of an IP interface address and a 16-bit (2 byte) port number. The man page also states that `sin_family` is always set to `AF_INET`, that `sin_port` defines a port number in network byte order, and that `sin_addr.s_addr` is the host IP address and should be assigned one of the `INADDR_*` values. 
