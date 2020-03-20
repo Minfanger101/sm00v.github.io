@@ -105,7 +105,6 @@ udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
 raw_socket = socket(AF_INET, SOCK_RAW, protocol)
 ```
 
-
 ### Socket
 ```nasm
 global _start
@@ -216,6 +215,15 @@ Time to accept incomming connections.
 Redirect STDIN, STDOUT, STDERR.
 
 ```nasm
+;int dup2(int oldfd, int newfd)
+;
+;syscal number: 63 (0x3F)
+;Arguement Values
+;oldfd = previous sockfd value returned by accept4
+;newfd = 0, 1, 2 iteratively (stdin, stdout, stderr)
+
+mov eax, 0x3F
+
 
 ```
 
