@@ -84,17 +84,25 @@ The socket or SYS_SOCKETCALL is syscall decimal number 102 or hex 0x66 which rec
 
 Any socket in C would be built upon the skeleton below:
 
-```c socket_skeleton = int socket(int domain, int type, int protocol);```
+```c 
+socket_skeleton = int socket(int domain, int type, int protocol);
+```
 
 The manpage ip(7) further explains that a TCP socket should be created with these paramaters:
 
-```c tcp_socket = socket(AF_INET, SOCK_STREAM, 0);``` which in pseudocode would be translated to:
-```c tcp_socket = 0x66(2, 1, 0)```
+```c 
+tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+``` 
+which in pseudocode would be translated to:
+```c 
+tcp_socket = 0x66(2, 1, 0)
+```
 
 Further examples of alternate sockets include:
 
-```c udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
-     raw_socket = socket(AF_INET, SOCK_RAW, protocol)```
+```c
+udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
+raw_socket = socket(AF_INET, SOCK_RAW, protocol)```
 
 
 ### Socket
@@ -110,11 +118,12 @@ _start:
 	
 	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
 	;which can be referenced in /usr/include/linux/net.h.
-	
-	push 0x1      ; push third arg on stack (protocol)
+	xor edi, edi  ; clear edi 
+	push edi      ; push edi (0x0) on stack. protocol=IPPROTO_IO (0x0)
+	push 0x1      ; put a 1 on the stack
 	pop ebx	      ; socketcall needs ebx to be 1. this clears ebx and moves 1 to ebx
-	push ebx      ; push second arg on stack (SOCK_STREAM)
-	push 0x2      ; push first arg on stack (AF_INET)
+	push ebx      ; push second arg on stack. socket_type=SOCK_STREAM (0x1)
+	push 0x2      ; push first arg on stack socket_family=AF_INET (0x2)
 	mov ecx, esp  ; move esp pointer to ecx per socketcall requirements [2, 1, 0]
 	int 0x80      ; call interrupt to execute socket syscall
 ```
@@ -126,8 +135,42 @@ Let's analyze the `BIND` syscall arguements. A bind function would appear as so:
 ### Bind
 Now that we have created a socket, it is time to bind to a given port.
 
-```
-	; Begin 
+```	
+	;int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+	;
+	;syscall number: 361 (0x169)
+	;Argument Values:
+	;sockfd = value in eax returned by socket()
+	;*addr = memory address of structure containing:
+	;  - sin_family: 0x0002 (AF_INET/IPv4)
+	;  - sin_port: 0x0539 (1337)
+	;  - sin_addr.s_addr: 0x00000000 (0.0.0.0)
+	;addrlen = 0x10 (16/sizeof(sockaddr_in))
+	
+	push eax	 ; store sockfd on stack
+	
+	mov eax, 0x169   ; bind syscall?
+	pop ebx 	 ; 0x169(sockfd[3], ) pop sockfd off stack into ebx
+	push edi	 ; push 0x00000000 (0.0.0.0) sin.addr[last arg] to stack
+	push word 0x0539 ; push port 1337 to stack
+	push word 0x0002 ; push AF_INET/IPV4 [2] to stack
+	mov ecx, esp	 ; mov pointer of stack to ecx
+	mov edx, 0x10	 ; mov 16 bit address length to edx
+	int 0x80	 ; execute interrupt 
+	
+	;the structure for sockaddr_in per 'man 7 ip' looks like:
+	;struct sockaddr_in {
+  	;  sa_family_t    sin_family; /* address family: AF_INET */
+    	;  in_port_t      sin_port;   /* port in network byte order */
+    	;  struct in_addr sin_addr;   /* internet address */
+	;  }; 
+	
+	push edi	 ; sin_addr; 0x0 ip address 0.0.0.0; the value a is interpreted as a 32 bit value per 'man inet_addr'
+	push word 0x3905 ; sin_port=1337
+	push 0x2	 ; sin_family=AF_INET
+	mov ecx, esp	 ; save pointer to sockaddr_in struct in ecx
+	
+		
 ```
 
 
