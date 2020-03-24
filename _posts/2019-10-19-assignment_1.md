@@ -111,21 +111,21 @@ global _start
 
 section .text
 _start:
-	;Begin by calling/intializing socket
+;Begin by calling/intializing socket
 	
-	push 0x66 ; rather than xor'ing eax, eax we can do a push 
-	pop eax   ; of the syscall socket and pop it into eax sparing us a byte (eax).
+push 0x66 ; rather than xor'ing eax, eax we can do a push 
+pop eax   ; of the syscall socket and pop it into eax sparing us a byte (eax).
 	
-	;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
-	;which can be referenced in /usr/include/linux/net.h.
-	xor edi, edi  ; clear edi 
-	push edi      ; push edi (0x0) on stack. protocol=IPPROTO_IO (0x0)
-	push 0x1      ; put a 1 on the stack
-	pop ebx	      ; socketcall needs ebx to be 1. this clears ebx and moves 1 to ebx
-	push ebx      ; push second arg on stack. socket_type=SOCK_STREAM (0x1)
-	push 0x2      ; push first arg on stack socket_family=AF_INET (0x2)
-	mov ecx, esp  ; move esp pointer to ecx per socketcall requirements [2, 1, 0]
-	int 0x80      ; call interrupt to execute socket syscall
+;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
+;which can be referenced in /usr/include/linux/net.h.
+xor edi, edi  ; clear edi 
+push edi      ; push edi (0x0) on stack. protocol=IPPROTO_IO (0x0)
+push 0x1      ; put a 1 on the stack
+pop ebx	      ; socketcall needs ebx to be 1. this clears ebx and moves 1 to ebx
+push ebx      ; push second arg on stack. socket_type=SOCK_STREAM (0x1)
+push 0x2      ; push first arg on stack socket_family=AF_INET (0x2)
+mov ecx, esp  ; move esp pointer to ecx per socketcall requirements [2, 1, 0]
+int 0x80      ; call interrupt to execute socket syscall
 ```
 
 Let's analyze the `BIND` syscall arguements. A bind function would appear as so:
@@ -136,79 +136,79 @@ Let's analyze the `BIND` syscall arguements. A bind function would appear as so:
 Now that we have created a socket, it is time to bind to a given port.
 
 ```nasm	
-	;int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
-	;
-	;syscall number: 361 (0x169)
-	;Argument Values:
-	;sockfd = value in eax returned by socket()
-	;*addr = memory address of structure containing:
-	;  - sin_family: 0x0002 (AF_INET/IPv4)
-	;  - sin_port: 0x0539 (1337)
-	;  - sin_addr.s_addr: 0x00000000 (0.0.0.0)
-	;addrlen = 0x10 (16/sizeof(sockaddr_in))
-	
-	mov esi, eax	 ; store sockfd in esi for later use
-	push esi	 ; store sockfd on stack
+;int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+;
+;syscall number: 361 (0x169)
+;Argument Values:
+;sockfd = value in eax returned by socket()
+;*addr = memory address of structure containing:
+;  - sin_family: 0x0002 (AF_INET/IPv4)
+;  - sin_port: 0x0539 (1337)
+;  - sin_addr.s_addr: 0x00000000 (0.0.0.0)
+;addrlen = 0x10 (16/sizeof(sockaddr_in))
 
-	mov eax, 0x169   ; bind syscall?
-	pop ebx 	 ; 0x169(sockfd[3], ) pop sockfd off stack into ebx
-	push edi	 ; push 0x00000000 (0.0.0.0) sin.addr[last arg] to stack
-	push word 0x0539 ; push port 1337 to stack
-	push word 0x0002 ; push AF_INET/IPV4 [2] to stack
-	mov ecx, esp	 ; mov pointer of stack to ecx
-	mov edx, 0x10	 ; mov 16 bit address length to edx
-	int 0x80	 ; execute interrupt 
+mov esi, eax	 ; store sockfd in esi for later use
+push esi	 ; store sockfd on stack
+
+mov eax, 0x169   ; bind syscall?
+pop ebx 	 ; 0x169(sockfd[3], ) pop sockfd off stack into ebx
+push edi	 ; push 0x00000000 (0.0.0.0) sin.addr[last arg] to stack
+push word 0x0539 ; push port 1337 to stack
+push word 0x0002 ; push AF_INET/IPV4 [2] to stack
+mov ecx, esp	 ; mov pointer of stack to ecx
+mov edx, 0x10	 ; mov 16 bit address length to edx
+int 0x80	 ; execute interrupt 
 	
-	;the structure for sockaddr_in per 'man 7 ip' looks like:
-	;struct sockaddr_in {
-  	;  sa_family_t    sin_family; /* address family: AF_INET */
-    	;  in_port_t      sin_port;   /* port in network byte order */
-    	;  struct in_addr sin_addr;   /* internet address */
-	;  }; 
+;the structure for sockaddr_in per 'man 7 ip' looks like:
+;struct sockaddr_in {
+;  sa_family_t    sin_family; /* address family: AF_INET */
+;  in_port_t      sin_port;   /* port in network byte order */
+;  struct in_addr sin_addr;   /* internet address */
+;  }; 
 	
-	push edi	 ; sin_addr; 0x0 ip address 0.0.0.0; the value a is interpreted as a 32 bit value per 'man inet_addr'
-	push word 0x3905 ; sin_port=1337
-	push 0x2	 ; sin_family=AF_INET
-	mov ecx, esp	 ; save pointer to sockaddr_in struct in ecx
+push edi	 ; sin_addr; 0x0 ip address 0.0.0.0; the value a is interpreted as a 32 bit value per 'man inet_addr'
+push word 0x3905 ; sin_port=1337
+push 0x2	 ; sin_family=AF_INET
+mov ecx, esp	 ; save pointer to sockaddr_in struct in ecx
 ```
 
 ### Listen
 Socket and bind are complete. Next we need to execute the listen syscall.
 
 ```nasm
-	;int listen(int sockfd, int backlog)	
-	;
-	;syscall number: 363 (0x16B)
-	;Arguement Values:
-	;sockfd = stored in esi (refers to a socket of type SOCK_STREAM)
-	;backlog = max length to which the queue of pending connections
-	;	   for sockfd may grow.
-	;
-	push 0x16B	; bind syscall
-	pop eax		; mov bind to eax
-	mov ebx, esi	; mov sockfd into ebx
-	mov ecx, 5	; set a backlog of 5 
-	int 0x80	; interrupt 
+;int listen(int sockfd, int backlog)	
+;
+;syscall number: 363 (0x16B)
+;Arguement Values:
+;sockfd = stored in esi (refers to a socket of type SOCK_STREAM)
+;backlog = max length to which the queue of pending connections
+;	   for sockfd may grow.
+;
+push 0x16B	; bind syscall
+pop eax		; mov bind to eax
+mov ebx, esi	; mov sockfd into ebx
+mov ecx, 5	; set a backlog of 5 
+int 0x80	; interrupt 
 ```
 
 ### Accept
 Time to accept incomming connections.
 
 ```nasm
-	;int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
-	;
-	;syscall number: 364 (0x16C)
-	;Arguement Values:
-	;sockfd = stored in esi (refers to a socket of type SOCK_STREAM)
-	;*sockaddr = NULL (0x00)
-	;*addrlen = NULLL (0x00)
-	;flags = NULL
-	;
-	mov eax, 0x16C	; accept4 syscall
-	xor ecx, ecx	; 0x00 sockaddr
-	xor edx, edx	; 0x00 addrlen
-	xor esi, esi	; 0x00 flags
-	int 0x80	; interrupt
+;int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
+;
+;syscall number: 364 (0x16C)
+;Arguement Values:
+;sockfd = stored in esi (refers to a socket of type SOCK_STREAM)
+;*sockaddr = NULL (0x00)
+;*addrlen = NULLL (0x00)
+;flags = NULL
+;
+mov eax, 0x16C	; accept4 syscall
+xor ecx, ecx	; 0x00 sockaddr
+xor edx, edx	; 0x00 addrlen
+xor esi, esi	; 0x00 flags
+int 0x80	; interrupt
 ```
 
 ### Dup2
