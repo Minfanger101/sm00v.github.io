@@ -222,10 +222,17 @@ Redirect STDIN, STDOUT, STDERR.
 ;oldfd = previous sockfd value returned by accept4
 ;newfd = 0, 1, 2 iteratively (stdin, stdout, stderr)
 
-mov eax, 0x3F
+mov ecx, 0x3	; setting up a counter for the loop to iterate through
+mov esi, eax	; preserve old sockfd from accept4
 
-
+sockfd_func:	; create a function to reproduce the same actions
+mov eax, 0x3F	; dup2 call
+mov ebx, esi	; restore sockfd to oldfd arguement
+dec cl		; decrement ecx to 2 then 1 then 0
+int 0x80	; interrupt
+jnz sockfd_func ; loop back to sockfd_func if not zero
 ```
+
 
 
 
