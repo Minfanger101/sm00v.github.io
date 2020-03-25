@@ -80,36 +80,44 @@ int 0x80 ;;; execve
 
 ## Building a TCP Bind Shell.
 
-The socket or SYS_SOCKETCALL is syscall decimal number 102 or hex 0x66 which receives three arguements according to `man7.org/linux/man-pages/man2/socketcall.2.html`. The received arguements are `domain (selects the protocal which we want tcp)`, `type (we want SOCK_STREAM)`, and `protocol ()`.
-
-Any socket in C would be built upon the skeleton below:
+In this excercise, we will build a bind tcp shell using 6 syscalls. It is important to understand that there
+many ways to build a bind shell. In this blog, I call each syscall directly using their hexidecimal referrence
+rather than using socketcall in each code segment like in the metasploit bind shell disassembly example. This makes the
+code just a bit longer but in my case, I wanted to understand both potentialities. 
 
 ### Socket
 ```nasm
-global _start
+global _start	; Standard start
+		;
+section .text	;
+_start:		;
 
-section .text
-_start:
-;Begin by calling/intializing socket
+xor ebx, ebx	; Zero out registers before usage to avoid a logic error
+xor ecx, ecx	;
+xor edx, edx	;
+xor edi, edi	;
+mul cx		; ax = ax * cx (0)
+
+; int socket(int domain, int type, int protocol) //
+; syscall number: 359 (0x167)
+;
+; Argument Values:
+; EBX -> domain = 2 (AF_INET/IPv4)
+; ECX -> type = 1 (SOCK_STREAM/TCP)
+; EDX -> protocol = 0 (IPPROTO_TCP)
+;
+; Note: For protocol, we could also use 6, as the man page for socket tells us,
+; "Normally only a single protocol exists to support a particular socket type
+;   within a given protocol family, in which case protocol can be specified
+;   as 0."
+
 	
-push 0x66 ; rather than xor'ing eax, eax we can do a push 
-pop eax   ; of the syscall socket and pop it into eax sparing us a byte (eax).
-	
-;Feed socket syscall it's arguements starting with domain (1 aka SYS_SOCKET) 
-;which can be referenced in /usr/include/linux/net.h.
-xor edi, edi  ; clear edi 
-push edi      ; push edi (0x0) on stack. protocol=IPPROTO_IO (0x0)
-push 0x1      ; put a 1 on the stack
-pop ebx	      ; socketcall needs ebx to be 1. this clears ebx and moves 1 to ebx
-push ebx      ; push second arg on stack. socket_type=SOCK_STREAM (0x1)
-push 0x2      ; push first arg on stack socket_family=AF_INET (0x2)
-mov ecx, esp  ; move esp pointer to ecx per socketcall requirements [2, 1, 0]
-int 0x80      ; call interrupt to execute socket syscall
+mov eax, 0x167	; socket syscall	
+mov bl, 2	; socket_family=AF_INET (0x2)
+mov cl, 1	; socket_type=SOCK_STREAM (0x1)
+mov dl, 0	; protocol=IPPROTO_IO (0x0)
+int 0x80	; interrupt
 ```
-
-Let's analyze the `BIND` syscall arguements. A bind function would appear as so:
-```int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);```
-
 
 ### Bind
 Now that we have created a socket, it is time to bind to a given port.
