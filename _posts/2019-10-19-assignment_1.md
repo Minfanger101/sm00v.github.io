@@ -8,7 +8,7 @@ header:
 ---
 ## Shell Bind TCP Objectives
 
-Create a Shell_Bind_TCP shellcode that;
+Create a Shell_Bind_TCP shellcode that:
 1. Binds to an easily configurable port number
 2. Executes a shell on an incoming connection
 
@@ -16,22 +16,23 @@ Create a Shell_Bind_TCP shellcode that;
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, `execve`. 
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket` : `bind` : `listen` : `accept` : `dup2` : `execve`. 
 
-We can analyze unistd_32.h to grab our syscall identifiers:
+We can analyze unistd_32.h to grab our syscall identifiers which give us the decimal syscall number which 
+we will translate to hexidecimal in each code segment:
 
 ```c
 egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 
-#define __NR_execve 11
-#define __NR_dup2 63
-#define __NR_socket 359
-#define __NR_bind 361
-#define __NR_listen 363
-#define __NR_accept4 364
+#define __NR_execve 11	 [0xb]
+#define __NR_dup2 63	 [0x3f]
+#define __NR_socket 359	 [0x167]
+#define __NR_bind 361	 [0x169]
+#define __NR_listen 363	 [0x16B]
+#define __NR_accept4 364 [0x16B]
 ```
 
-Each serve a purpose in creating a bind shell. Let's analyze the first function in this payload, socket. 
+Each serve a purpose in creating our bind shell. 
 
 ### Referencing MSF Goodies
 ```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a bind shell payload the size of 78 bytes:
