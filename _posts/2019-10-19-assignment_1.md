@@ -16,8 +16,11 @@ Create a Shell_Bind_TCP shellcode that;
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, `execve`. We can analyze unistd_32.h to grab our syscall identifiers:
-```
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket`, `bind`, `listen`, `accept`, `dup2`, `execve`. 
+
+We can analyze unistd_32.h to grab our syscall identifiers:
+
+```c
 egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 
 #define __NR_execve 11
