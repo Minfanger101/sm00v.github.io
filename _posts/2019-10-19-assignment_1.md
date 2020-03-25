@@ -84,27 +84,6 @@ The socket or SYS_SOCKETCALL is syscall decimal number 102 or hex 0x66 which rec
 
 Any socket in C would be built upon the skeleton below:
 
-```c 
-socket_skeleton = int socket(int domain, int type, int protocol);
-```
-
-The manpage ip(7) further explains that a TCP socket should be created with these paramaters:
-
-```c 
-tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
-``` 
-which in pseudocode would be translated to:
-```c 
-tcp_socket = 0x66(2, 1, 0)
-```
-
-Further examples of alternate sockets include:
-
-```c
-udp_socket = socket(AF_INET, SOCK_DGRAM, 0)
-raw_socket = socket(AF_INET, SOCK_RAW, protocol)
-```
-
 ### Socket
 ```nasm
 global _start
@@ -264,13 +243,6 @@ int 0x80 		; Execute SHELL
 
 
 
-```shell
-root@kali:~/workspace/SLAE# grep SYS /usr/include/linux/net.h
-#define SYS_SOCKET      1               /* sys_socket(2)                */
-#define SYS_BIND        2               /* sys_bind(2)                  */
-#define SYS_CONNECT     3               /* sys_connect(2)               */
-#define SYS_LISTEN      4               /* sys_listen(2)                */
-#define SYS_ACCEPT      5               /* sys_accept(2)                */
 ...
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
