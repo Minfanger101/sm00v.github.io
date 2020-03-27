@@ -242,10 +242,10 @@ int 0x80 		; Execute SHELL
 
 # Complete Assembly Program
 
-The final code snippet was modified after having found null bytes in the disassembly. 
-I resolved this by chaning all the mov instructions from the 32 bit register to the 
-lower 16 bits eg. eax > ax or the lower 8 bits al. Also added is `LISTEN_PORT` which 
-allows port customization at build time.
+The final code snippet was modified after having found null bytes in the disassembly
+of my compiled program. I resolved this by chaning all the mov instructions from the 
+32 bit register to the lower 16 bits eg. eax > ax or the lower 8 bits al. Also added 
+is `LISTEN_PORT` which allows port customization at build time.
 
 ```nasm
 ; shell_bind_tcp.nasm
@@ -322,7 +322,7 @@ To do this, I learned that rather than hardcoding a port, you can enter a placeh
 what that placeholder should be at build time.
 
 Rather than doing a `push word 0x5c11` you can do `push word LISTEN_PORT`.
-When compiling, feeding nasm the `-DLISTEN_PORT=PORT` will allow us to specify a port at build time. 
+When compiling, feeding nasm `-DLISTEN_PORT=PORT` will allow us to specify a port at build time. 
 I have modified Vivek's script slightly to compile a 32bit elf on a 64bit linux machine.
 
 The script will take the basename of the nasm file as the first argument and the port
