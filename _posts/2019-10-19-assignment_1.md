@@ -341,7 +341,6 @@ ld --dynamic-linker /lib/ld-linux.so.2 -m elf_i386 -z execstack -o $1 $1.o
 echo '[+] Done!'
 ``` 
 
-...
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
 
