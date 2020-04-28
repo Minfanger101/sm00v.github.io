@@ -123,11 +123,10 @@ mul cx		; ax = ax * cx (0)
 ;EAX -> socketcall sycall 0x66
 ;EBX -> int call 0x1 = sys_socket
 ;ECX -> ESP pointer
-;STACK -> *args
-;*args Values:
-;EBX -> domain = 2 (AF_INET/IPv4)
-;ECX -> type = 1 (SOCK_STREAM/TCP)
-;EDX -> protocol = 0 (IPPROTO_TCP)
+;STACK *args Values:
+;3rd push -> domain = 2 (AF_INET/IPv4)
+;2nd push -> type = 1 (SOCK_STREAM/TCP)
+;1st push -> protocol = 0 (IPPROTO_TCP)
 ;
 
 push ebx	; push 0x0
@@ -140,12 +139,12 @@ int 0x80	; interrupt
 ```
 
 ## Dup2
-We can steal the `dup2` code from our bind shell because all were doing is redirecting stdin, stdout, and stderr.
+We can reuse the `dup2` code from our bind shell because all were doing is redirecting stdin, stdout, and stderr.
 
 ```nasm
 ;int dup2(int oldfd, int newfd)
 ;
-;syscal number: 63 (0x3F)
+;syscall number: 63 (0x3F)
 ;Arguement Values
 ;oldfd = previous sockfd value returned by socket
 ;newfd = 0, 1, 2 iteratively (stdin, stdout, stderr)
@@ -162,6 +161,23 @@ jnz sockfd_func ; loop back to sockfd_func if not zero
 
 ## Connect
 
+```nasm
+;int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+;
+;syscall number: 102 (0x66) 
+;Arguement Values
+;EAX -> 0x66 socketcall
+;EBX -> ESP pointer *args
+;ECX -> Addrlen
+;STACK *args Values:
+;3rd push -> 
+;
+
+mov al 0x66	; socketcall wrapper
+mov ebx, esp	; move *args to ebp
+mov ecx,  	; 
+
+```
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
 
